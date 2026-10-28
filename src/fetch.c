@@ -7,6 +7,7 @@
 #include <fetch.h>
 #include <curl/curl.h>
 
+// libcurl bs
 typedef struct {
     uint8_t *data;
     size_t size;
@@ -26,7 +27,29 @@ static size_t on_data(void *piece, size_t item_size, size_t item_count, void *us
     return piece_size;
 }
 
-static int http_get(const char *url, const char *api_key, Memory *out) {
+int show_progress(void *user, curl_off_t download_total, curl_off_t download_now, curl_off_t upload_total, curl_off_t upload_now) {
+    Progress *progress = user;
+    curl_off_t total = progress->is_upload ? upload_total : download_total;
+    curl_off_t now = progress->is_upload ? upload_now   : download_now;
+
+    if (total <= 0) {
+        fprintf(stderr, "\r%s %.2f MB", progress->label, now / 1048576.0);
+        fflush(stderr);
+        return 0;
+    }
+
+    const int width = 30;
+    int filled = (int)(now * width / total);
+    int percent = (int)(now * 100 / total);
+
+    fprintf(stderr, "\r%s [", progress->label);
+    for (int i = 0; i < width; i++) fputc(i < filled ? '#' : '-', stderr);
+    fprintf(stderr, "] %3d%%  %.2f / %.2f MB", percent, now / 1048576.0, total / 1048576.0);
+    fflush(stderr);
+    return 0;                                
+}
+
+static int http_get(const char *url, const char *api_key, Memory *out, const char *label) {
     CURL *curl = curl_easy_init();
     if (!curl) return 0;
 
@@ -37,6 +60,13 @@ static int http_get(const char *url, const char *api_key, Memory *out) {
         headers = curl_slist_append(headers, line);
     }
 
+    Progress progress = { label, 0 };
+    if (label) {
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, show_progress);
+        curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progress);
+    }
+
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
@@ -45,6 +75,10 @@ static int http_get(const char *url, const char *api_key, Memory *out) {
     curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, ""); 
 
     CURLcode result = curl_easy_perform(curl);
+    if (label) {
+        fputc('\n', stderr); 
+    }
+
     long status = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
 
@@ -71,7 +105,7 @@ uint8_t *download_place(const char *api_key, uint64_t place_id, int version, siz
     }
 
     Memory reply = { 0 };
-    if (!http_get(url, api_key, &reply)) {
+    if (!http_get(url, api_key, &reply, NULL)) {
         free(reply.data);
         return NULL;
     }
@@ -96,8 +130,8 @@ uint8_t *download_place(const char *api_key, uint64_t place_id, int version, siz
 
     *end = 0;
     Memory file = {0};
-    
-    int ok = http_get(start + 1, NULL, &file);
+
+    int ok = http_get(start + 1, NULL, &file, "downloading");
     free(reply.data);
     if (!ok) {
         free(file.data);

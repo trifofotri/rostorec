@@ -80,7 +80,13 @@ static int upload_place(const char *api_key, uint64_t universe_id, uint64_t plac
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)file_size);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, file);
 
+    Progress progress = { "uploading  ", 1 };
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, show_progress);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progress);
+
     CURLcode result = curl_easy_perform(curl);
+    fputc('\n', stderr);
     long status = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
 
