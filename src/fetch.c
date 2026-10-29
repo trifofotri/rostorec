@@ -141,3 +141,55 @@ uint8_t *download_place(const char *api_key, uint64_t place_id, int version, siz
     *out_size = file.size;
     return file.data;
 }
+
+int upload_place(const char *api_key, uint64_t universe_id, uint64_t place_id, const uint8_t *file, size_t file_size, const char *label) {
+    CURL *curl = curl_easy_init();
+    if (!curl) return -1;
+
+    char url[256];
+    snprintf(url, sizeof url, "https://apis.roblox.com/universes/v1/%" PRIu64 "/places/%" PRIu64 "/versions?versionType=Saved", universe_id, place_id);
+
+    char key_header[1024];
+    snprintf(key_header, sizeof key_header, "x-api-key: %s", api_key);
+
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/octet-stream");
+    headers = curl_slist_append(headers, key_header);
+
+    Memory reply = {0};
+    Progress progress = { label, 1 };
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)file_size);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, file);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, on_data);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &reply);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, show_progress);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progress);
+
+    CURLcode result = curl_easy_perform(curl);
+    fputc('\n', stderr);
+
+    long status = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+    curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+
+    int version = -1;
+    if (result != CURLE_OK) {
+        fprintf(stderr, "curl failed: %s\n", curl_easy_strerror(result));
+    } else if (status != 200) {
+        fprintf(stderr, "upload failed, HTTP %ld: %s\n", status, reply.data ? (char *)reply.data : "");
+    } else if (reply.data) {
+        char *tag = strstr((char *)reply.data, "\"versionNumber\"");
+        char *colon = tag ? strchr(tag, ':') : NULL;
+        if (colon) {
+            version = (int)strtol(colon + 1, NULL, 10);
+        }
+    }
+
+    free(reply.data);
+    return version;
+}

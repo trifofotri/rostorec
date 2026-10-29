@@ -14,10 +14,13 @@ add_library(lz4 STATIC
     third_party/lz4/lib/xxhash.c
 )
 
+add_library(cjson STATIC third_party/cjson/cJSON.c)
+
 target_include_directories(lz4 PUBLIC third_party/lz4/lib)
+target_include_directories(cjson PUBLIC third_party/cjson)
 
 add_executable(${PROJECT_NAME} ${SRC})
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE CURL::libcurl lz4)
+target_link_libraries(${PROJECT_NAME} PRIVATE CURL::libcurl lz4 cjson)

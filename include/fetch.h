@@ -13,5 +13,5 @@ typedef struct {
 uint8_t *download_place(const char *api_key, uint64_t place_id, int version, size_t *out_size);
 uint8_t *extract_value(const uint8_t *file, size_t file_size, uint32_t *out_len);
 int show_progress(void *user, curl_off_t download_total, curl_off_t download_now, curl_off_t upload_total, curl_off_t upload_now);
-
+int upload_place(const char *api_key, uint64_t universe_id, uint64_t place_id, const uint8_t *file, size_t file_size, const char *label);
 #endif
