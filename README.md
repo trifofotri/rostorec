@@ -2,6 +2,9 @@
 
 *Infinite cloud storage with roblox places!!!*
 
+> [!WARNING]  
+> I'm not responsible for any bans or anything that happens to your roblox account if you use this.
+
 `put` splits a file into parts, wraps each part in a tiny place file (a single `StringValue`), and uploads each one as a new version of a place through [Open Cloud API](https://create.roblox.com/docs/cloud/guides/usage-place-publishing).
 
 ## Build
@@ -67,5 +70,5 @@ Keep this file safe.
 ## Warnings
 
 - **Every upload replaces the entire place.** Use some place that you don't care about.
-- **Parts are 100 MB each** (`PART_SIZE` in `main.c`). I'm too lazy to figure out roblox's upload limit or whatever.
+- **Parts are 100 MB each** (`PART_SIZE` in `src/rostorec.c`). I'm too lazy to figure out roblox's upload limit or whatever.
 - **Don't use this as your only copy of anything important.**
